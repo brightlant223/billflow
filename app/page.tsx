@@ -64,6 +64,7 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const [businessName, setBusinessName] = useState("BrightLant Studio");
   const [currency, setCurrency] = useState("INR");
+  const [hydrated, setHydrated] = useState(false);
   const [invoiceClient, setInvoiceClient] = useState("c1");
   const [invoiceDate, setInvoiceDate] = useState("2026-10-23");
   const [invoiceDue, setInvoiceDue] = useState("2026-11-06");
@@ -71,6 +72,7 @@ export default function Home() {
   const [invoicePrice, setInvoicePrice] = useState("48000");
   const [invoiceQty, setInvoiceQty] = useState("1");
   const [invoiceTax, setInvoiceTax] = useState("18");
+  const [invoiceNote, setInvoiceNote] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientCompany, setClientCompany] = useState("");
@@ -87,13 +89,16 @@ export default function Home() {
         if (data.currency) setCurrency(data.currency);
       }
     } catch {}
+    setHydrated(true);
   }, []);
   useEffect(() => {
+    if (!hydrated) return;
     try { localStorage.setItem("cal-invoice-saas-v1", JSON.stringify({ clients, invoices, products, businessName, currency })); } catch {}
-  }, [clients, invoices, products, businessName, currency]);
+  }, [hydrated, clients, invoices, products, businessName, currency]);
 
   const clientFor = (id: string) => clients.find((c) => c.id === id) || initialClients[0];
-  const total = (invoice: Invoice) => currency === "INR" ? invoiceTotal(invoice) : invoiceTotal(invoice);
+  const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 2 }).format(Number.isFinite(amount) ? amount : 0);
+  const total = (invoice: Invoice) => invoiceTotal(invoice);
   const filteredInvoices = useMemo(() => invoices.filter((inv) => {
     const client = clients.find((c) => c.id === inv.clientId);
     const matchesQuery = [inv.id, client?.name, client?.company, ...inv.items.map((i) => i.name)].some((v) => (v || "").toLowerCase().includes(query.toLowerCase()));
@@ -108,12 +113,14 @@ export default function Home() {
 
   function createInvoice(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const id = `INV-2026-${1049 + invoices.length - initialInvoices.length}`;
+    const nextNumber = invoices.reduce((max, invoice) => { const match = invoice.id.match(/(\\d+)$/); return Math.max(max, match ? Number(match[1]) : 1048); }, 1048) + 1;
+    const id = `INV-${new Date(invoiceDate + "T12:00:00").getFullYear()}-${nextNumber}`;
     const newInvoice: Invoice = {
-      id, clientId: invoiceClient, date: invoiceDate, due: invoiceDue, status: "Pending", note: "",
+      id, clientId: invoiceClient, date: invoiceDate, due: invoiceDue, status: "Pending", note: invoiceNote.trim(),
       items: [{ id: `line-${Date.now()}`, name: invoiceTitle, qty: Math.max(1, Number(invoiceQty) || 1), price: Math.max(0, Number(invoicePrice) || 0), tax: Math.max(0, Number(invoiceTax) || 0) }],
     };
     setInvoices((current) => [newInvoice, ...current]);
+    setInvoiceNote("");
     setShowInvoice(false);
     setPage("Invoices");
     setFilter("All");
@@ -202,7 +209,7 @@ export default function Home() {
           <footer className="app-footer"><span>© 2026 Billflow by <strong>BrightLant</strong></span><span><span className="footer-dot"/> All systems operational <span className="footer-sep"/> Made for modern businesses <Sparkles size={13}/></span></footer>
         </div>
       </main>
-      {showInvoice && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowInvoice(false);}}><form className="modal-card" onSubmit={createInvoice}><div className="modal-header"><div><span className="modal-kicker">BILLING CENTER</span><h2>Create new invoice</h2><p>Fill in the details to draft an invoice for your client.</p></div><button type="button" className="icon-btn" onClick={()=>setShowInvoice(false)} aria-label="Close"><X size={19}/></button></div><div className="modal-body"><label>Client<select required value={invoiceClient} onChange={e=>setInvoiceClient(e.target.value)}>{clients.map(c=><option value={c.id} key={c.id}>{c.name} · {c.company}</option>)}</select></label><div className="form-two-col"><label>Issue date<input type="date" required value={invoiceDate} onChange={e=>setInvoiceDate(e.target.value)}/></label><label>Due date<input type="date" required value={invoiceDue} onChange={e=>setInvoiceDue(e.target.value)}/></label></div><div className="modal-section-label"><span>LINE ITEM</span><span>AMOUNT</span></div><label>Item / service<input required value={invoiceTitle} onChange={e=>setInvoiceTitle(e.target.value)} placeholder="e.g. Website development"/></label><div className="form-three-col"><label>Quantity<input type="number" min="1" required value={invoiceQty} onChange={e=>setInvoiceQty(e.target.value)}/></label><label>Unit price (₹)<input type="number" min="0" required value={invoicePrice} onChange={e=>setInvoicePrice(e.target.value)}/></label><label>Tax (%)<input type="number" min="0" max="100" value={invoiceTax} onChange={e=>setInvoiceTax(e.target.value)}/></label></div><div className="invoice-total-preview"><span>Estimated total (incl. tax)</span><strong>{money((Number(invoicePrice)||0)*(Number(invoiceQty)||1)*(1+(Number(invoiceTax)||0)/100))}</strong></div><label>Notes (optional)<textarea rows={2} placeholder="Add a note for your client..."/></label></div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={()=>setShowInvoice(false)}>Cancel</button><button type="submit" className="btn btn-primary"><FilePlus2 size={16}/> Create invoice</button></div></form></div>}
+      {showInvoice && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowInvoice(false);}}><form className="modal-card" onSubmit={createInvoice}><div className="modal-header"><div><span className="modal-kicker">BILLING CENTER</span><h2>Create new invoice</h2><p>Fill in the details to draft an invoice for your client.</p></div><button type="button" className="icon-btn" onClick={()=>setShowInvoice(false)} aria-label="Close"><X size={19}/></button></div><div className="modal-body"><label>Client<select required value={invoiceClient} onChange={e=>setInvoiceClient(e.target.value)}>{clients.map(c=><option value={c.id} key={c.id}>{c.name} · {c.company}</option>)}</select></label><div className="form-two-col"><label>Issue date<input type="date" required value={invoiceDate} onChange={e=>setInvoiceDate(e.target.value)}/></label><label>Due date<input type="date" required value={invoiceDue} onChange={e=>setInvoiceDue(e.target.value)}/></label></div><div className="modal-section-label"><span>LINE ITEM</span><span>AMOUNT</span></div><label>Item / service<input required value={invoiceTitle} onChange={e=>setInvoiceTitle(e.target.value)} placeholder="e.g. Website development"/></label><div className="form-three-col"><label>Quantity<input type="number" min="1" required value={invoiceQty} onChange={e=>setInvoiceQty(e.target.value)}/></label><label>Unit price (₹)<input type="number" min="0" required value={invoicePrice} onChange={e=>setInvoicePrice(e.target.value)}/></label><label>Tax (%)<input type="number" min="0" max="100" value={invoiceTax} onChange={e=>setInvoiceTax(e.target.value)}/></label></div><div className="invoice-total-preview"><span>Estimated total (incl. tax)</span><strong>{money((Number(invoicePrice)||0)*(Number(invoiceQty)||1)*(1+(Number(invoiceTax)||0)/100))}</strong></div><label>Notes (optional)<textarea rows={2} value={invoiceNote} onChange={e=>setInvoiceNote(e.target.value)} placeholder="Add a note for your client..."/></label></div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={()=>setShowInvoice(false)}>Cancel</button><button type="submit" className="btn btn-primary"><FilePlus2 size={16}/> Create invoice</button></div></form></div>}
       {showClient && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowClient(false);}}><form className="modal-card small-modal" onSubmit={createClient}><div className="modal-header"><div><span className="modal-kicker">CLIENT DIRECTORY</span><h2>Add a client</h2><p>Keep your customer details in one place.</p></div><button type="button" className="icon-btn" onClick={()=>setShowClient(false)} aria-label="Close"><X size={19}/></button></div><div className="modal-body"><label>Client name<input required autoFocus value={clientName} onChange={e=>setClientName(e.target.value)} placeholder="e.g. Alex Morgan"/></label><label>Company name<input value={clientCompany} onChange={e=>setClientCompany(e.target.value)} placeholder="Company or business"/></label><label>Email address<input type="email" value={clientEmail} onChange={e=>setClientEmail(e.target.value)} placeholder="alex@company.com"/></label></div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={()=>setShowClient(false)}>Cancel</button><button type="submit" className="btn btn-primary"><Plus size={16}/> Add client</button></div></form></div>}
       {selectedInvoice && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setSelectedInvoice(null);}}><div className="modal-card detail-modal"><div className="modal-header"><div><span className="modal-kicker">INVOICE DETAILS</span><h2>{selectedInvoice.id}</h2><p>Issued {dateLabel(selectedInvoice.date)} · Due {dateLabel(selectedInvoice.due)}</p></div><button className="icon-btn" onClick={()=>setSelectedInvoice(null)} aria-label="Close"><X size={19}/></button></div><div className="detail-client"><Avatar client={clientFor(selectedInvoice.clientId)}/><div><strong>{clientFor(selectedInvoice.clientId).name}</strong><span>{clientFor(selectedInvoice.clientId).company} · {clientFor(selectedInvoice.clientId).email}</span></div><StatusPill status={selectedInvoice.status}/></div><div className="detail-lines">{selectedInvoice.items.map(item=><div key={item.id}><span>{item.name}<small>{item.qty} × {money(item.price)} + {item.tax}% tax</small></span><strong>{money(item.qty*item.price*(1+item.tax/100))}</strong></div>)}</div><div className="detail-total"><span>Total due</span><strong>{money(total(selectedInvoice))}</strong></div><div className="detail-actions"><button className="btn btn-secondary" onClick={()=>printInvoice(selectedInvoice)}><Download size={15}/> Print / PDF</button>{selectedInvoice.status!=="Paid"&&<button className="btn btn-primary" onClick={()=>changeStatus(selectedInvoice,"Paid")}><CheckCheck size={15}/> Mark as paid</button>}{selectedInvoice.status==="Paid"&&<button className="btn btn-secondary" onClick={()=>changeStatus(selectedInvoice,"Pending")}><Clock3 size={15}/> Mark pending</button>}</div></div></div>}
       {toast && <div className="toast"><span><Check size={15}/></span>{toast}</div>}
