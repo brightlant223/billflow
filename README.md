@@ -1,37 +1,69 @@
 # Billflow — Invoice Management SaaS
 
-A responsive invoice-management SaaS starter built with Next.js App Router, React, TypeScript and a custom dark/orange glassmorphism design by BrightLant.
+Responsive invoice-management starter built with Next.js App Router, React, TypeScript and a dark/orange design by BrightLant.
 
-## Features
+## Existing demo UI
 - Revenue dashboard, invoice status breakdown and recent activity
-- Create invoices with line items, quantities, tax and due dates
-- Manage invoice status (Paid, Pending, Overdue, Draft)
-- Invoice detail view and print-to-PDF workflow
-- Client directory and add-client form
-- Product/service catalog
-- Reports with CSV export
-- Business profile, currency selection and notification preferences
-- Local browser persistence using localStorage
-- Responsive layout and keyboard-friendly controls
+- Create invoices with line items, tax and due dates
+- Manage invoice status, clients, products/services, reports and business settings
+- Browser-local demo data and print-to-PDF workflow
 
-## Run locally
-Requires Node.js 20 or newer.
+## Backend foundation committed
 
-```bash
-npm install
-npm run dev
-```
+- Supabase email/password authentication helpers and /login page
+- Email confirmation callback and sign-out route
+- PostgreSQL schema for businesses, memberships, clients, products, invoices and invoice items
+- Row Level Security (RLS) policies that isolate tenant-owned records
+- Signup trigger that provisions a private workspace and owner membership
+- Authenticated, tenant-scoped APIs for clients, products and invoices
+- Server-generated PDF downloads and invoice email with PDF attachment via Resend
 
-Open http://localhost:3000.
+**Integration status:** the existing dashboard at / still uses demo/localStorage state. The new backend endpoints and auth foundation are not yet wired into the dashboard's current forms and tables. Do not use this stage as a production accounting system until that migration and its tests are completed.
 
-## Production build
-```bash
-npm run build
-npm start
-```
+## Setup
 
-## Important production notes
-This starter is a frontend demo. Data is stored in the current browser via localStorage and is not shared across users or devices. Before production use, integrate authentication, a database, server-side validation, secure file storage, email delivery and payment-provider webhooks. Do not use the demo data as real financial records.
+1. Create a Supabase project.
+2. Run the full supabase/schema.sql in Supabase Dashboard → SQL Editor. It creates the tables, RLS policies and signup workspace trigger.
+3. Copy .env.example to .env.local and set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, RESEND_API_KEY and EMAIL_FROM.
+4. In Supabase Auth settings, configure the site URL and allowed redirect URLs, including http://localhost:3000/auth/callback and the production callback URL. Choose whether email confirmation is required.
+5. Verify your sender domain in Resend before using it in EMAIL_FROM.
+6. Run npm install then npm run dev.
+7. Add the same environment variables to Vercel project settings before deployment.
 
-## Deploy
-Import this repository into Vercel. Framework preset: **Next.js**. Build command: `npm run build`. No output directory override is needed.
+## API endpoints
+
+All endpoints require an authenticated Supabase session; RLS remains the database authorization boundary.
+
+- GET /api/clients, POST /api/clients
+- GET /api/products, POST /api/products
+- GET /api/invoices, POST /api/invoices
+- GET /api/invoices/:id, PATCH /api/invoices/:id
+- GET /api/invoices/:id/pdf
+- POST /api/invoices/:id/email
+
+Invoice creation JSON shape:
+
+    {
+      "client_id": "client-uuid",
+      "issue_date": "2026-10-23",
+      "due_date": "2026-11-06",
+      "status": "pending",
+      "notes": "Thanks for your business",
+      "items": [
+        { "description": "Website development", "quantity": 1, "unit_price": 48000, "tax_rate": 18 }
+      ]
+    }
+
+## Security and production checklist
+
+- Never expose a Supabase secret/service-role key to the browser. The current helpers use the publishable key and cookie-based sessions.
+- Test tenant isolation with two separate accounts before launch.
+- Migrate the dashboard away from localStorage/demo seed data to these APIs.
+- Move invoice-number allocation into a transaction/database function before concurrent production use; the current starter's read-then-insert allocation can race.
+- Add rate limiting, audit logs, robust pagination, tests for cross-tenant access, and email delivery monitoring.
+- Configure database backups, email sender authentication and privacy/retention policies.
+- PDF layout is currently a one-page template for up to 22 line items; implement pagination for longer invoices.
+
+## Deployment
+
+Import the repository into Vercel. Framework preset: Next.js; build command npm run build. No output directory override is needed.
