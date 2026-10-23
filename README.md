@@ -23,7 +23,7 @@ Responsive invoice-management starter built with Next.js App Router, React, Type
 ## Setup
 
 1. Create a Supabase project.
-2. Run the full supabase/schema.sql in Supabase Dashboard → SQL Editor. It creates the tables, RLS policies and signup workspace trigger.
+2. Run the full supabase/schema.sql in Supabase Dashboard → SQL Editor. It creates the tables, RLS policies and signup workspace trigger. If your project's Data API does not expose newly created public tables by default, enable exposure for these tables in API settings; SQL GRANTs and RLS are both required.
 3. Copy .env.example to .env.local and set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, RESEND_API_KEY and EMAIL_FROM.
 4. In Supabase Auth settings, configure the site URL and allowed redirect URLs, including http://localhost:3000/auth/callback and the production callback URL. Choose whether email confirmation is required.
 5. Verify your sender domain in Resend before using it in EMAIL_FROM.
