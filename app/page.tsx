@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Bell, BriefcaseBusiness, CalendarDays,
   Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp,
@@ -106,7 +106,7 @@ export default function Home() {
   const allInvoiced = invoices.filter((i) => i.status !== "Draft").reduce((s, i) => s + total(i), 0);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 2800); };
 
-  function createInvoice(e: React.FormEvent<HTMLFormElement>) {
+  function createInvoice(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const id = `INV-2026-${1049 + invoices.length - initialInvoices.length}`;
     const newInvoice: Invoice = {
@@ -119,7 +119,7 @@ export default function Home() {
     setFilter("All");
     notify("Invoice created successfully");
   }
-  function createClient(e: React.FormEvent<HTMLFormElement>) {
+  function createClient(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const name = clientName.trim();
     if (!name) return;
